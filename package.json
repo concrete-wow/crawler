@@ -1,0 +1,22 @@
+{
+  "name": "crawler",
+  "version": "0.0.1",
+  "description": "Factually.dev Crawler from ConcreteWow",
+  "main": "index.js",
+  "repository": "git@github.com:concrete-wow/crawler.git",
+  "author": "Rob Pickering <rob@pickering.org>",
+  "license": "BSD-3-Clause",
+  "private": false,
+  "scripts": {
+    "start": "node index.js",
+    "build": "echo no-op",
+    "test": "echo yep, they would be good"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "supertest": "^4.0.2",
+    "tape": "^5.0.0",
+    "tape-promise": "^4.0.0"
+  }
+}
