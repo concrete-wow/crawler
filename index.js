@@ -1,3 +1,9 @@
+const express = require('express');
+const cors = require('cors');
+const app = express();
+const port = process.env.PORT || 8888;
+
+
 // grab the packages we need
 var Crawler = require("simplecrawler");
 
@@ -73,7 +79,19 @@ async function processNew() {
   console.log(`Waiting for ${workers.length} crawls to complete...`)
   await Promise.all(workers);
   console.log('... and done, taking a breather');
-  setTimeout(60000, processNew);
+  setTimeout(processNew, 60000);
 }
 
 processNew();
+
+
+app.get('/', (req, res, next) => res.redirect('https://www.factually.dev/'));
+
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`App listening on port ${port}`);
+    console.log('Press Ctrl+C to quit.');
+  });
+}
+
+exports = module.exports = app;

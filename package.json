@@ -13,6 +13,8 @@
     "test": "echo yep, they would be good"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
     "pg-promise": "^10.5.2",
     "simplecrawler": "^1.1.9"
   },
