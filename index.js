@@ -32,7 +32,7 @@ function crawl(url, rank) {
       interval: 10000,
       maxConcurrency: 10,
       maxDepth: 100,
-      filterByDomain: false
+      filterByDomain: false,
       UserAgent
     });
     crawler.on("fetchcomplete", async function (item, data, res) {
