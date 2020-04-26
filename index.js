@@ -3,7 +3,6 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 8888;
 
-
 // grab the packages we need
 var Crawler = require("simplecrawler");
 
@@ -39,9 +38,8 @@ function crawl(url, rank) {
         // if we are at top level and only difference between thing we were called with and this
         // is http://foo.bar.com vs http://foo.bar.com/ then kill the redundant one
         // If we don't do this then the seed gets left behind with no fetch so we keep re-crawling it
-        if(item.depth === 1 && item.url !== url)
+        if (item.depth === 1 && item.url !== url)
           batch.push(db.none("DELETE from url WHERE url = $1", [url]));
-
 
         if (item.referrer != null) {
           console.log('have referrer: ', item.referrer);
@@ -70,20 +68,25 @@ async function processNew() {
   workers = new Array();
   console.log('starting a crawl:');
   db.each('SELECT * from url WHERE last_read is NULL', [], row => {
-      const { host, protocol } = new URL(row.url);
-      if (host != null && protocol != null)
-        workers.push(crawl(row.url, row.crawler_rank));
+      try {
+        const { host, protocol } = new URL(row.url);
+        if (host != null && protocol != null)
+          workers.push(crawl(row.url, row.crawler_rank));
+      } catch (e) {
+        console.log(`didn't like URL ${row.url}, ignoring`);
+      }
     })
-    .then(() => console.log('done'))
+    .then(async () => {
+      console.log(`Waiting for ${workers.length} crawls to complete...`)
+      await Promise.all(workers);
+      console.log('... and done, taking a breather');
+      setTimeout(processNew, 60000);
+    })
     .catch(err => console.error(err));
-  console.log(`Waiting for ${workers.length} crawls to complete...`)
-  await Promise.all(workers);
-  console.log('... and done, taking a breather');
-  setTimeout(processNew, 60000);
+
 }
 
 processNew();
-
 
 app.get('/', (req, res, next) => res.redirect('https://www.factually.dev/'));
 
