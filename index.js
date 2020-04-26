@@ -9,6 +9,8 @@ var Crawler = require("simplecrawler");
 
 const db = require('./lib/database.js');
 
+const UserAgent = "Factually news crawler based on Node/simplecrawler <version> (see https://www.factually.dev/)"
+
 const SOFTDELETE = `DELETE from url WHERE url = $1`
 
 const UPSERT_URL = `INSERT INTO url
@@ -31,6 +33,7 @@ function crawl(url, rank) {
       maxConcurrency: 10,
       maxDepth: 100,
       filterByDomain: false
+      UserAgent
     });
     crawler.on("fetchcomplete", async function (item, data, res) {
       if(item.url.match(config.ignoreFiles)){
