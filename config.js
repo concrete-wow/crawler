@@ -14,6 +14,7 @@ const config = localConfig || {
 
   },
   "all": {
+    ignoreFiles: /(.*\.xml|.*\.css|.*\.js|robots.txt)/,
     api_key: process.env.APIKEY,
     database: {
       host: process.env.DB_HOST,

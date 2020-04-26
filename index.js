@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 8888;
+const config = require('./config');
 
 // grab the packages we need
 var Crawler = require("simplecrawler");
@@ -13,7 +14,7 @@ const SOFTDELETE = `DELETE from url WHERE url = $1`
 const UPSERT_URL = `INSERT INTO url
                     (url, domain, crawler_rank, last_read) values ($1, $2, $3, $4)
                     ON CONFLICT (url)
-                    DO UPDATE SET crawler_rank=$3, last_read=$4`;
+                    DO UPDATE SET crawler_rank = crawler_rank + $3, last_read=$4`;
 
 const UPSERT_LINK = `INSERT INTO link (src, dst, crawler_blessing, last_read) values ($1, $2, $3, $4)
                     ON CONFLICT (src, dst)
@@ -28,47 +29,52 @@ function crawl(url, rank) {
     Object.assign(crawler, {
       interval: 10000,
       maxConcurrency: 10,
-      maxDepth: 20,
+      maxDepth: 100,
       filterByDomain: false
     });
-    finalise = crawler.wait();
-    crawler.on("fetchcomplete", function (item, data, res) {
-      db.tx(t => {
-          var batch = new Array();
-          batch.push(t.none(UPSERT_URL,
+    crawler.on("fetchcomplete", async function (item, data, res) {
+      if(item.url.match(config.ignoreFiles)){
+        console.log(`Ignoring file ${item.url}`);
+        return;
+      }
+      var finalise = this.wait();
+
+      try {
+        await db.none(UPSERT_URL,
           [item.url, item.host, rank / item.depth, now]
-          ));
+        );
 
-          if (item.referrer != null && !(new URL(item.referrer)).pathname.match(/robots.txt/)) {
-            batch.push(t.none(UPSERT_URL,
+        if (item.referrer != null && !(new URL(item.referrer))
+          .pathname.match(/robots.txt/)) {
+          await db.none(UPSERT_URL,
             [item.referrer, item.host, rank / item.depth, now]
-            ));
-            batch.push(t.none(UPSERT_LINK,
+          );
+          await db.none(UPSERT_LINK,
             [item.referrer, item.url, rank / item.depth, now]
-            ));
-          } else {
-            if (item.depth > 1)
-              console.log('no referrer: ', item.url);
-          }
-          return t.batch(batch);
+          );
+        } else {
+          if (item.depth > 1)
+            console.log('no referrer: ', item.url);
+        }
+        // if we are at top level and only difference between thing we were called with and this
+        // is http://foo.bar.com vs http://foo.bar.com/ then kill the redundant one
+        // If we don't do this then the seed gets left behind with no fetch so we keep re-crawling it
+        // This is soft if there is a hanging referrer ref
+        if (item.depth === 1 && item.url !== url)
+          db.none(SOFTDELETE, [url])
+          .catch(() => {});
 
-        })
-        .then(() => console.log('inserted: ', item.url))
-        .catch(err => console.log('insert failed: ', item.url))
-        .finally(() => {
-          // if we are at top level and only difference between thing we were called with and this
-          // is http://foo.bar.com vs http://foo.bar.com/ then kill the redundant one
-          // If we don't do this then the seed gets left behind with no fetch so we keep re-crawling it
-          // This is soft if there is a hanging referrer ref
-          if (item.depth === 1 && item.url !== url)
-            db.none(SOFTDELETE, [url]).catch(() => {});
-          finalise();
-        });
+        console.log('inserted: ', item.url)
+      } catch (e) {
+        // We mostly aren't interested
+        console.log('insert failed: ', item.url)
+      } finally {
+        finalise();
+      }
     });
     crawler.on("complete", resolve);
 
     crawler.start();
-
   });
 
 }
