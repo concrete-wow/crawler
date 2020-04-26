@@ -11,7 +11,7 @@ steps:
   args: ['push', 'gcr.io/$PROJECT_ID/crawler:latest']
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'gcr.io/$PROJECT_ID/crawler:$BRANCH_NAME']
-- name: 'gcr.io/cloud-builders/gcloud'
-  args: [ 'beta', 'run', 'deploy', '--region', 'europe-west1', '--image', 'gcr.io/$PROJECT_ID/crawler', '--platform', 'managed', 'crawler' ]
+# - name: 'gcr.io/cloud-builders/gcloud'
+#  args: [ 'beta', 'run', 'deploy', '--region', 'europe-west1', '--image', 'gcr.io/$PROJECT_ID/crawler', '--platform', 'managed', 'crawler' ]
 images:
 - 'gcr.io/$PROJECT_ID/crawler'
