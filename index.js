@@ -8,6 +8,7 @@ var Crawler = require("simplecrawler");
 
 const db = require('./lib/database.js');
 
+
 const UPSERT_URL = `INSERT INTO url
                     (url, domain, crawler_rank, last_read) values ($1, $2, $3, $4)
                     ON CONFLICT (url)
@@ -18,48 +19,53 @@ const UPSERT_LINK = `INSERT INTO link (src, dst, crawler_blessing, last_read) va
                     DO UPDATE SET crawler_blessing=$3, last_read=$4`;
 
 function crawl(url, rank) {
-  var crawler = new Crawler(url);
-  const now = new Date();
-
-  Object.assign(crawler, {
-    interval: 10000,
-    maxConcurrency: 10,
-    maxDepth: 20,
-    filterByDomain: false
-  });
-  crawler.on("fetchcomplete", function (item, data, res) {
-    //console.log('got item', item.url);
-    db.tx(t => {
-        var batch = new Array();
-        batch.push(db.none(UPSERT_URL,
-          [item.url, item.host, rank / item.depth, now]
-        ));
-
-        // if we are at top level and only difference between thing we were called with and this
-        // is http://foo.bar.com vs http://foo.bar.com/ then kill the redundant one
-        // If we don't do this then the seed gets left behind with no fetch so we keep re-crawling it
-        if (item.depth === 1 && item.url !== url)
-          batch.push(db.none("DELETE from url WHERE url = $1", [url]));
-
-        if (item.referrer != null) {
-          console.log('have referrer: ', item.referrer);
-          batch.push(db.none(UPSERT_LINK,
-            [item.referrer, item.url, rank / item.depth, now]
-          ));
-        } else {
-          if (item.depth > 1)
-            console.log('no referrer: ', item.url, item);
-        }
-        return t.batch(batch);
-
-      })
-      .then(() => console.log('inserted: ', item.url))
-      .catch(err => console.log('insert failed: ', item.url));
-  });
-
   return new Promise((resolve, reject) => {
+
+    var crawler = new Crawler(url);
+    const now = new Date();
+
+    Object.assign(crawler, {
+      interval: 10000,
+      maxConcurrency: 10,
+      maxDepth: 20,
+      filterByDomain: false
+    });
+    finalise = crawler.wait();
+    crawler.on("fetchcomplete", function (item, data, res) {
+      db.tx(t => {
+          var batch = new Array();
+          batch.push(t.none(UPSERT_URL,
+          [item.url, item.host, rank / item.depth, now]
+          ));
+
+          // if we are at top level and only difference between thing we were called with and this
+          // is http://foo.bar.com vs http://foo.bar.com/ then kill the redundant one
+          // If we don't do this then the seed gets left behind with no fetch so we keep re-crawling it
+          if (item.depth === 1 && item.url !== url)
+            batch.push(t.none("DELETE from url WHERE url = $1", [url]));
+
+          if (item.referrer != null && !(new URL(item.referrer)).pathname.match(/robots.txt/)) {
+            batch.push(t.none(UPSERT_URL,
+            [item.referrer, item.host, rank / item.depth, now]
+            ));
+            batch.push(t.none(UPSERT_LINK,
+            [item.referrer, item.url, rank / item.depth, now]
+            ));
+          } else {
+            if (item.depth > 1)
+              console.log('no referrer: ', item.url);
+          }
+          return t.batch(batch);
+
+        })
+        .then(() => console.log('inserted: ', item.url))
+        .catch(err => console.log('insert failed: ', item.url))
+        .finally(() => finalise());
+    });
     crawler.on("complete", resolve);
+
     crawler.start();
+
   });
 
 }
