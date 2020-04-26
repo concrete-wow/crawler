@@ -9,7 +9,7 @@ var Crawler = require("simplecrawler");
 
 const db = require('./lib/database.js');
 
-const UserAgent = "Factually news crawler based on Node/simplecrawler <version> (see https://www.factually.dev/)"
+const UserAgent = config.UserAgent;
 
 const SOFTDELETE = `DELETE from url WHERE url = $1`
 
@@ -28,9 +28,9 @@ function crawl(url, rank) {
     this.promise = new Promise((resolve, reject) => {
       this.crawler = new Crawler(url);
       Object.assign(this.crawler, {
-        interval: 1000,
-        maxConcurrency: 100,
-        maxDepth: 100,
+        interval: config.interval,
+        maxConcurrency: config.maxConcurrency,
+        maxDepth: config.maxDepth,
         filterByDomain: false,
         UserAgent
       });

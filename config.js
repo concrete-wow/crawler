@@ -15,6 +15,10 @@ const config = localConfig || {
   },
   "all": {
     ignoreFiles: /(.*\.xml|.*\.css|.*\.js|robots.txt)/,
+    UserAgent: "Factually news crawler based on Node/simplecrawler <version> (see https://www.factually.dev/)",
+    interval: process.env.INTERVAL || 1000,
+    maxConcurrency: process.env.CONCURRENCY || 100,
+    maxDepth: process.env.DEPTH || 100,
     api_key: process.env.APIKEY,
     database: {
       host: process.env.DB_HOST,
