@@ -1,5 +1,5 @@
 # Crawler
-This is the factually crawler.
+This is the Factually crawler.
 
 It has no interfaces, just connects to the database and roams around the Internet from time to time seeking URLs for our pagerank engine to rate.
 
